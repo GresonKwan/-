@@ -76,12 +76,6 @@
             <div class="participant-summary" id="participantSummary" hidden></div>
           </section>
 
-          <section class="card steps-card" aria-labelledby="stepsTitle">
-            <p class="eyebrow">探究流程</p>
-            <h2 id="stepsTitle">五个实验步骤引导</h2>
-            <div class="steps-grid" id="stepsGrid"></div>
-          </section>
-
           <section class="chat-card" aria-labelledby="chatTitle">
             <div class="chat-header">
               <div>
@@ -91,6 +85,13 @@
               <button class="ghost-button" type="button" id="clearChat">清空</button>
             </div>
             <div class="messages" id="messages" aria-live="polite"></div>
+            <section class="steps-strip" aria-labelledby="stepsTitle">
+              <div class="steps-strip-header">
+                <p class="eyebrow">探究流程</p>
+                <h2 id="stepsTitle">五个实验步骤引导</h2>
+              </div>
+              <div class="steps-grid" id="stepsGrid"></div>
+            </section>
             <form class="composer" id="chatForm">
               <label class="sr-only" for="chatInput">输入你的问题或观察</label>
               <textarea id="chatInput" rows="2" placeholder="输入你的问题，或记录左侧实验观察..." required></textarea>
