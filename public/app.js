@@ -197,7 +197,7 @@ async function handleStepClick(step) {
 
   const questionText = `【${step.title}】\n${step.questions.join("\n")}`;
   addMessage("user", questionText);
-  addMessage("system", "科学助教正在根据当前步骤生成 3～4 句话的引导...");
+  addMessage("system", "小科正在根据当前步骤生成 3～4 句话的引导...");
 
   try {
     const reply = await sendToAgent({
@@ -226,7 +226,7 @@ function setupParticipantForm() {
     state.participantContext = context;
     elements.participantSummary.hidden = false;
     elements.participantSummary.textContent = `已保存：${summarizeParticipant(context)}`;
-    addMessage("agent", `已记录 ${summarizeParticipant(context)}。接下来请先观察左侧 NOBOOK 实验，或点击一个探究步骤开始。`);
+    addMessage("agent", `小科已记录 ${summarizeParticipant(context)}。接下来请先观察左侧 NOBOOK 实验，或点击一个探究步骤开始。`);
   });
 
   elements.toggleParticipant.addEventListener("click", () => {
@@ -243,7 +243,7 @@ function setupChat() {
 
     elements.chatInput.value = "";
     addMessage("user", text);
-    addMessage("system", "科学助教正在思考...");
+    addMessage("system", "小科正在思考...");
 
     try {
       const reply = await sendToAgent({
@@ -277,7 +277,7 @@ function setupChat() {
 function addWelcomeMessage() {
   addMessage(
     "agent",
-    "你好，我是科学探究助教。左侧是 NOBOOK 凸透镜实验，我不能自动读取其中的数据，所以请你把观察到的现象或测量记录告诉我。你可以点击五个步骤按钮，也可以直接输入问题。"
+    "你好，我是小科，是你们的科学探究智能学伴。左侧是 NOBOOK 凸透镜实验，我不能自动读取其中的数据，所以请把你们观察到的现象或测量记录告诉我。你们可以点击五个步骤按钮，也可以直接向我提问。"
   );
 }
 
