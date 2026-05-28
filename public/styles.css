@@ -303,6 +303,11 @@ textarea {
   margin-top: 6px;
 }
 
+.step-item {
+  position: relative;
+  min-width: 0;
+}
+
 .step-button {
   width: 100%;
   border: 1px solid var(--border);
@@ -314,7 +319,75 @@ textarea {
 }
 
 .step-button:hover,
-.step-button.is-active {
+.step-button.is-active,
+.step-item:focus-within .step-button {
+  border-color: rgba(37, 99, 235, 0.55);
+  background: var(--primary-soft);
+}
+
+.step-menu {
+  position: absolute;
+  z-index: 20;
+  right: 50%;
+  bottom: calc(100% + 8px);
+  display: grid;
+  width: min(280px, calc(100vw - 32px));
+  gap: 6px;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.18);
+  opacity: 0;
+  padding: 8px;
+  pointer-events: none;
+  transform: translate(50%, 6px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.step-item:hover .step-menu,
+.step-item:focus-within .step-menu {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(50%, 0);
+}
+
+.step-item:nth-child(-n + 2) .step-menu {
+  right: auto;
+  left: 0;
+  transform: translateY(6px);
+}
+
+.step-item:nth-child(-n + 2):hover .step-menu,
+.step-item:nth-child(-n + 2):focus-within .step-menu {
+  transform: translateY(0);
+}
+
+.step-item:nth-last-child(-n + 2) .step-menu {
+  right: 0;
+  left: auto;
+  transform: translateY(6px);
+}
+
+.step-item:nth-last-child(-n + 2):hover .step-menu,
+.step-item:nth-last-child(-n + 2):focus-within .step-menu {
+  transform: translateY(0);
+}
+
+.prompt-option {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 8px 9px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.prompt-option:hover,
+.prompt-option:focus-visible {
   border-color: rgba(37, 99, 235, 0.55);
   background: var(--primary-soft);
 }
@@ -419,6 +492,8 @@ textarea {
   .steps-grid {
     grid-template-columns: repeat(5, minmax(88px, 1fr));
     overflow-x: auto;
+    padding-top: 116px;
+    margin-top: -110px;
   }
 }
 
@@ -446,6 +521,25 @@ textarea {
 
   .steps-grid {
     grid-template-columns: 1fr;
+    overflow: visible;
+    padding-top: 0;
+    margin-top: 6px;
+  }
+
+  .step-menu {
+    position: static;
+    display: none;
+    width: 100%;
+    margin-top: 6px;
+    box-shadow: none;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .step-item:hover .step-menu,
+  .step-item:focus-within .step-menu {
+    display: grid;
   }
 
   .lab-frame-wrap,

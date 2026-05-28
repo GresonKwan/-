@@ -96,11 +96,15 @@ function renderMessages() {
 function renderSteps() {
   elements.stepsGrid.replaceChildren();
   for (const step of stepDefinitions) {
+    const item = document.createElement("div");
+    item.className = "step-item";
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "step-button";
     button.dataset.stepId = String(step.id);
     button.setAttribute("aria-pressed", state.activeStep === step.id ? "true" : "false");
+    button.setAttribute("aria-haspopup", "menu");
     if (state.activeStep === step.id) button.classList.add("is-active");
     const title = document.createElement("span");
     title.className = "step-title";
@@ -109,8 +113,26 @@ function renderSteps() {
     desc.className = "step-desc";
     desc.textContent = step.short;
     button.append(title, desc);
-    button.addEventListener("click", () => handleStepClick(step));
-    elements.stepsGrid.appendChild(button);
+
+    const menu = document.createElement("div");
+    menu.className = "step-menu";
+    menu.setAttribute("role", "menu");
+    menu.setAttribute("aria-label", `${step.title}提示词`);
+
+    step.questions.forEach((question, index) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "prompt-option";
+      option.setAttribute("role", "menuitem");
+      option.dataset.stepId = String(step.id);
+      option.dataset.promptIndex = String(index + 1);
+      option.textContent = `提示词 ${index + 1}：${question.replace(/^①|^②/, "")}`;
+      option.addEventListener("click", () => handleStepPromptClick(step, question, index));
+      menu.appendChild(option);
+    });
+
+    item.append(button, menu);
+    elements.stepsGrid.appendChild(item);
   }
 }
 
@@ -190,20 +212,20 @@ function getSessionId() {
   return sessionId;
 }
 
-async function handleStepClick(step) {
+async function handleStepPromptClick(step, question, promptIndex) {
   state.activeStep = step.id;
-  elements.currentStepStatus.textContent = `第 ${step.id} 步：${step.title}`;
+  elements.currentStepStatus.textContent = `第 ${step.id} 步：${step.title}｜提示词 ${promptIndex + 1}`;
   renderSteps();
 
-  const questionText = `【${step.title}】\n${step.questions.join("\n")}`;
+  const questionText = `【${step.title}｜提示词 ${promptIndex + 1}】\n${question}`;
   addMessage("user", questionText);
-  addMessage("system", "小科正在根据当前步骤生成 3～4 句话的引导...");
+  addMessage("system", "小科正在根据所选提示词生成 3～4 句话的引导...");
 
   try {
     const reply = await sendToAgent({
       studentMessage: questionText,
       activeStep: step.id,
-      triggeredTemplateId: `step-${step.id}`,
+      triggeredTemplateId: `step-${step.id}-prompt-${promptIndex + 1}`,
       reportedObservation: ""
     });
     state.messages.pop();
