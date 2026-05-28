@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="面向初中学生的凸透镜探究智能实验平台">
+    <title>凸透镜探究智能实验平台</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">科学探究实验室</p>
+          <h1>凸透镜探究智能实验平台</h1>
+        </div>
+        <div class="header-status" id="currentStepStatus">尚未选择探究步骤</div>
+      </header>
+
+      <main class="workspace">
+        <section class="lab-panel" aria-labelledby="labTitle">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">左侧实验</p>
+              <h2 id="labTitle">NOBOOK 凸透镜成像实验</h2>
+            </div>
+            <a class="secondary-link" id="openLabLink" href="#" target="_blank" rel="noopener noreferrer">新页面打开</a>
+          </div>
+          <div class="lab-frame-wrap" id="labFrameWrap">
+            <div class="loading-card" id="labLoading">正在加载 NOBOOK 实验页面...</div>
+            <iframe id="labFrame" title="NOBOOK 探究凸透镜成像的规律实验" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          </div>
+          <p class="lab-hint">提示：左侧是第三方实验页面。完成操作后，请把观察到的物距、像距、虚实、大小或正倒告诉右侧科学助教。</p>
+        </section>
+
+        <aside class="guide-panel" aria-label="探究协作面板">
+          <section class="card participant-card" aria-labelledby="participantTitle">
+            <div class="card-title-row">
+              <div>
+                <p class="eyebrow">协作信息</p>
+                <h2 id="participantTitle">试验者信息</h2>
+              </div>
+              <button class="ghost-button" type="button" id="toggleParticipant">收起</button>
+            </div>
+            <form id="participantForm" class="participant-form">
+              <label>
+                <span>班级 / 任务编号</span>
+                <input id="className" name="className" autocomplete="off" placeholder="例如：八年级2班 / 任务A">
+              </label>
+              <label>
+                <span>小组编号 <strong aria-hidden="true">*</strong></span>
+                <input id="groupId" name="groupId" autocomplete="off" placeholder="例如：第1小组" required>
+              </label>
+              <div class="form-grid">
+                <label>
+                  <span>成员 1 <strong aria-hidden="true">*</strong></span>
+                  <input id="memberOne" name="memberOne" autocomplete="off" placeholder="昵称或姓名" required>
+                </label>
+                <label>
+                  <span>成员 2</span>
+                  <input id="memberTwo" name="memberTwo" autocomplete="off" placeholder="可选">
+                </label>
+              </div>
+              <label>
+                <span>小组先验知识构成</span>
+                <select id="knowledgeProfile" name="knowledgeProfile">
+                  <option value="unspecified">未配置 / 默认引导</option>
+                  <option value="low-low">低-低组：需要更多脚手架</option>
+                  <option value="mixed">高-低混合组：促进互相解释</option>
+                  <option value="high-high">高-高组：加强反思追问</option>
+                </select>
+              </label>
+              <p class="privacy-note">仅用于本次实验中的称呼和协作引导，不要求填写手机号、账号或家庭信息。</p>
+              <button class="primary-button" type="submit">保存试验者信息</button>
+            </form>
+            <div class="participant-summary" id="participantSummary" hidden></div>
+          </section>
+
+          <section class="card steps-card" aria-labelledby="stepsTitle">
+            <p class="eyebrow">探究流程</p>
+            <h2 id="stepsTitle">五个实验步骤引导</h2>
+            <div class="steps-grid" id="stepsGrid"></div>
+          </section>
+
+          <section class="chat-card" aria-labelledby="chatTitle">
+            <div class="chat-header">
+              <div>
+                <p class="eyebrow">对话式 Agent</p>
+                <h2 id="chatTitle">科学探究助教</h2>
+              </div>
+              <button class="ghost-button" type="button" id="clearChat">清空</button>
+            </div>
+            <div class="messages" id="messages" aria-live="polite"></div>
+            <form class="composer" id="chatForm">
+              <label class="sr-only" for="chatInput">输入你的问题或观察</label>
+              <textarea id="chatInput" rows="2" placeholder="输入你的问题，或记录左侧实验观察..." required></textarea>
+              <button class="primary-button" type="submit">发送</button>
+            </form>
+          </section>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
