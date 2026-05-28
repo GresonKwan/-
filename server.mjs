@@ -4,8 +4,15 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
+try {
+  process.loadEnvFile(join(rootDir, ".env.local"));
+} catch {
+  // .env.local is optional and intentionally ignored by Git.
+}
 const publicDir = join(rootDir, "public");
 const port = Number.parseInt(process.env.PORT || "4173", 10);
+const deepSeekBaseUrl = "https://api.deepseek.com";
+const deepSeekModel = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 
 const defaultLabUrl =
   "https://wl.nobook.com/console/templates/resource/207_d2c4a829c23aa7471a0344a92e34cb74";
@@ -87,6 +94,48 @@ function limitReplySentences(text, maxSentences = 4) {
   return sentences.slice(0, maxSentences).join("").trim();
 }
 
+function buildSystemPrompt() {
+  return [
+    "你是面向初中学生的科学探究助手，当前活动是探究凸透镜的成像规律。",
+    "回复必须使用简洁、准确的中文，并限制在3到4句话。",
+    "先回应学生当前问题，再给出概念或推理提示，最后提出一个可立即观察、记录、讨论或复述的问题。",
+    "左侧NOBOOK实验是第三方嵌入页面，你不能自动读取其中的数据，只能引用学生明确报告的观察。",
+    "第1至第3步中的滑动摩擦力只作为科学方法示例，最后必须迁移回凸透镜实验。",
+    "不要替学生虚构观察数据，不要直接代写完整实验结论，不评价学生能力层级。"
+  ].join("\n");
+}
+
+function buildDeepSeekUserPrompt(payload) {
+  const activeStep = payload.activeStep ? String(payload.activeStep) : "未选择";
+  const stepTitle = stepTitles[activeStep] || "自由探究";
+  const profile = getProfileStrategy(payload.participantContext?.knowledgeProfile);
+  const groupId = payload.participantContext?.groupId || "未填写小组";
+  const names = Array.isArray(payload.participantContext?.displayNames)
+    ? payload.participantContext.displayNames.join("、")
+    : "";
+  const observation = payload.reportedObservation?.text || "学生尚未报告明确观察。";
+
+  return [
+    `当前步骤：${activeStep} ${stepTitle}`,
+    `小组：${groupId}${names ? `；成员：${names}` : ""}`,
+    `适应性反馈策略：${profile.label}；${profile.focus}`,
+    `学生报告的观察：${observation}`,
+    `学生消息：${payload.studentMessage || ""}`
+  ].join("\n");
+}
+
+function buildDeepSeekHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter((item) => item?.role === "user" || item?.role === "assistant")
+    .map((item) => ({
+      role: item.role,
+      content: String(item.content || "").slice(0, 800)
+    }))
+    .filter((item) => item.content.trim())
+    .slice(-8);
+}
+
 function buildLocalAgentReply(payload) {
   const activeStep = payload.activeStep ? String(payload.activeStep) : "";
   const stepTitle = stepTitles[activeStep] || "自由探究";
@@ -161,6 +210,42 @@ async function callExternalAgent(payload) {
   throw new Error("External agent response did not include content, reply, or message.");
 }
 
+async function callDeepSeekAgent(payload) {
+  if (!process.env.DEEPSEEK_API_KEY) return null;
+
+  const response = await fetch(`${deepSeekBaseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: deepSeekModel,
+      messages: [
+        { role: "system", content: buildSystemPrompt() },
+        ...buildDeepSeekHistory(payload.history),
+        { role: "user", content: buildDeepSeekUserPrompt(payload) }
+      ],
+      thinking: { type: "disabled" },
+      stream: false,
+      max_tokens: 220,
+      temperature: 0.4
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`DeepSeek responded with ${response.status}: ${errorText.slice(0, 180)}`);
+  }
+
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content === "string" && content.trim()) {
+    return content;
+  }
+  throw new Error("DeepSeek response did not include choices[0].message.content.");
+}
+
 async function handleApi(req, res) {
   if (req.method === "GET" && req.url === "/api/config") {
     sendJson(res, 200, {
@@ -172,10 +257,16 @@ async function handleApi(req, res) {
   if (req.method === "POST" && req.url === "/api/chat") {
     try {
       const payload = await readRequestBody(req);
-      const externalReply = await callExternalAgent(payload);
+      let deepSeekReply = null;
+      try {
+        deepSeekReply = await callDeepSeekAgent(payload);
+      } catch (error) {
+        console.error("DeepSeek request failed:", error instanceof Error ? error.message : error);
+      }
+      const externalReply = deepSeekReply || (await callExternalAgent(payload));
       sendJson(res, 200, {
         content: limitReplySentences(externalReply || buildLocalAgentReply(payload)),
-        source: externalReply ? "external" : "local"
+        source: deepSeekReply ? "deepseek" : externalReply ? "external" : "local"
       });
     } catch (error) {
       sendJson(res, 500, {

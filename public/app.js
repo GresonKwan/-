@@ -141,6 +141,7 @@ async function loadConfig() {
 }
 
 async function sendToAgent({ studentMessage, activeStep, triggeredTemplateId, reportedObservation }) {
+  const chatHistory = buildAgentHistory(studentMessage);
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: {
@@ -151,6 +152,7 @@ async function sendToAgent({ studentMessage, activeStep, triggeredTemplateId, re
       sessionId: getSessionId(),
       activeStep,
       studentMessage,
+      history: chatHistory,
       triggeredTemplateId,
       participantContext: state.participantContext,
       reportedObservation: reportedObservation ? { text: reportedObservation, recordedByStudent: true } : undefined
@@ -162,6 +164,20 @@ async function sendToAgent({ studentMessage, activeStep, triggeredTemplateId, re
     throw new Error(payload.message || "Agent 请求失败");
   }
   return payload.content;
+}
+
+function buildAgentHistory(currentMessage) {
+  const history = state.messages
+    .filter((message) => message.role === "user" || message.role === "agent")
+    .map((message) => ({
+      role: message.role === "agent" ? "assistant" : "user",
+      content: message.content
+    }));
+  const last = history.at(-1);
+  if (last?.role === "user" && last.content === currentMessage) {
+    history.pop();
+  }
+  return history.slice(-8);
 }
 
 function getSessionId() {

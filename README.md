@@ -22,12 +22,21 @@ npm run check
 
 ## 环境变量
 
-参考 [.env.example](.env.example)。当前服务不依赖第三方包，因此不会自动读取本地 `.env` 文件；请通过 shell、部署平台或进程管理器注入环境变量。
+参考 [.env.example](.env.example)。服务启动时会尝试读取本地 `.env.local`，该文件已被 Git 忽略；生产环境建议通过部署平台或进程管理器注入环境变量。
 
 - `PORT`：服务端口，默认 `4173`。
 - `PUBLIC_NOBOOK_LENS_RESOURCE_URL`：公开的 NOBOOK iframe 地址，不是密钥。
-- `AGENT_API_URL`：可选外部 Agent 服务端点，未配置时使用本地规则引导。
-- `AGENT_API_KEY`：可选外部 Agent 密钥，只在 `server.mjs` 中读取，不下发浏览器。
+- `DEEPSEEK_API_KEY`：DeepSeek API key，只在 `server.mjs` 中读取，不下发浏览器。
+- `DEEPSEEK_MODEL`：DeepSeek 模型，默认 `deepseek-v4-flash`。
+- `AGENT_API_URL` / `AGENT_API_KEY`：可选泛用外部 Agent 端点；配置 DeepSeek 时优先使用 DeepSeek。
+
+本地配置示例：
+
+```bash
+cp .env.example .env.local
+# 然后只在 .env.local 中填写 DEEPSEEK_API_KEY
+npm run dev
+```
 
 ## 设计交付物
 
@@ -57,4 +66,4 @@ npm run check
 
 ## 后续实现建议
 
-当前实现刻意保持零前端构建依赖，方便迁移到任意 Node 运行环境。后续如需接入真实模型，应先确认 `AGENT_API_URL` 的请求/响应协议，再替换或扩展 `server.mjs` 的外部 Agent 适配逻辑。
+当前实现刻意保持零前端构建依赖，方便迁移到任意 Node 运行环境。DeepSeek 已通过服务端适配层接入；未配置 `DEEPSEEK_API_KEY` 时会自动使用本地规则兜底。
