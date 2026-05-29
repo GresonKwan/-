@@ -13,6 +13,8 @@ const publicDir = join(rootDir, "public");
 const port = Number.parseInt(process.env.PORT || "4173", 10);
 const deepSeekBaseUrl = "https://api.deepseek.com";
 const deepSeekModel = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
+const deepSeekTimeoutMs = 12_000;
+const deepSeekMaxAttempts = 2;
 
 const defaultLabUrl =
   "https://wl.nobook.com/console/templates/resource/207_d2c4a829c23aa7471a0344a92e34cb74";
@@ -235,8 +237,29 @@ async function callExternalAgent(payload) {
 async function callDeepSeekAgent(payload) {
   if (!process.env.DEEPSEEK_API_KEY) return null;
 
+  let lastError = null;
+  for (let attempt = 1; attempt <= deepSeekMaxAttempts; attempt += 1) {
+    try {
+      return await requestDeepSeekAgent(payload);
+    } catch (error) {
+      lastError = error;
+      console.error(
+        `DeepSeek request failed on attempt ${attempt}:`,
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
+
+  throw lastError || new Error("DeepSeek request failed.");
+}
+
+async function requestDeepSeekAgent(payload) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), deepSeekTimeoutMs);
+
   const response = await fetch(`${deepSeekBaseUrl}/chat/completions`, {
     method: "POST",
+    signal: controller.signal,
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`
@@ -253,7 +276,7 @@ async function callDeepSeekAgent(payload) {
       max_tokens: 220,
       temperature: 0.4
     })
-  });
+  }).finally(() => clearTimeout(timeout));
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -268,6 +291,13 @@ async function callDeepSeekAgent(payload) {
   throw new Error("DeepSeek response did not include choices[0].message.content.");
 }
 
+function buildDegradedNotice(sourceName = "DeepSeek") {
+  return {
+    type: "network_degraded",
+    message: `${sourceName} 连接不稳定，已自动切换为本地安全引导。你们可以继续完成实验记录，稍后再尝试联网回复。`
+  };
+}
+
 async function handleApi(req, res) {
   if (req.method === "GET" && req.url === "/api/config") {
     sendJson(res, 200, {
@@ -280,15 +310,27 @@ async function handleApi(req, res) {
     try {
       const payload = await readRequestBody(req);
       let deepSeekReply = null;
+      let degradedNotice = null;
       try {
         deepSeekReply = await callDeepSeekAgent(payload);
       } catch (error) {
-        console.error("DeepSeek request failed:", error instanceof Error ? error.message : error);
+        degradedNotice = buildDegradedNotice();
       }
-      const externalReply = deepSeekReply || (await callExternalAgent(payload));
+      let externalReply = null;
+      if (!deepSeekReply) {
+        try {
+          externalReply = await callExternalAgent(payload);
+        } catch (error) {
+          console.error("External agent request failed:", error instanceof Error ? error.message : error);
+          degradedNotice ||= buildDegradedNotice("外部 Agent");
+        }
+      }
+      const replyContent = deepSeekReply || externalReply || buildLocalAgentReply(payload);
       sendJson(res, 200, {
-        content: limitReplySentences(externalReply || buildLocalAgentReply(payload)),
-        source: deepSeekReply ? "deepseek" : externalReply ? "external" : "local"
+        content: limitReplySentences(replyContent),
+        source: deepSeekReply ? "deepseek" : externalReply ? "external" : degradedNotice ? "fallback" : "local",
+        degraded: Boolean(degradedNotice),
+        notice: degradedNotice
       });
     } catch (error) {
       sendJson(res, 500, {

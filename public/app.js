@@ -87,10 +87,53 @@ function renderMessages() {
   for (const message of state.messages) {
     const item = document.createElement("div");
     item.className = `message ${message.role}`;
-    item.textContent = message.content;
+    renderMessageContent(item, message.content);
     elements.messages.appendChild(item);
   }
   elements.messages.scrollTop = elements.messages.scrollHeight;
+}
+
+function renderMessageContent(container, content) {
+  const lines = String(content || "").replace(/\r\n?/g, "\n").split("\n");
+  lines.forEach((line, index) => {
+    if (index > 0) container.appendChild(document.createElement("br"));
+    appendInlineMarkdown(container, normalizeMarkdownLine(line));
+  });
+}
+
+function normalizeMarkdownLine(line) {
+  return line
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^\s*[-*+]\s+/, "• ")
+    .replace(/^\s*\d+\.\s+/, (match) => match.trim() + " ");
+}
+
+function appendInlineMarkdown(container, text) {
+  const pattern = /(\*\*|__)(.+?)\1|`([^`]+)`/g;
+  let lastIndex = 0;
+  for (const match of text.matchAll(pattern)) {
+    if (match.index > lastIndex) {
+      container.appendChild(document.createTextNode(stripLooseMarkdown(text.slice(lastIndex, match.index))));
+    }
+    const marker = match[1];
+    const value = match[2] || match[3] || "";
+    const element = document.createElement(marker ? "strong" : "code");
+    element.textContent = stripLooseMarkdown(value);
+    container.appendChild(element);
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    container.appendChild(document.createTextNode(stripLooseMarkdown(text.slice(lastIndex))));
+  }
+}
+
+function stripLooseMarkdown(text) {
+  return text
+    .replace(/\*\*\*/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/__/g, "")
+    .replace(/(^|[^*])\*(?!\*)/g, "$1")
+    .replace(/_/g, "");
 }
 
 function renderSteps() {
@@ -185,7 +228,7 @@ async function sendToAgent({ studentMessage, activeStep, triggeredTemplateId, re
   if (!response.ok) {
     throw new Error(payload.message || "Agent 请求失败");
   }
-  return payload.content;
+  return payload;
 }
 
 function buildAgentHistory(currentMessage) {
@@ -222,14 +265,14 @@ async function handleStepPromptClick(step, question, promptIndex) {
   addMessage("system", "小科正在根据所选提示词生成 3～4 句话的引导...");
 
   try {
-    const reply = await sendToAgent({
+    const payload = await sendToAgent({
       studentMessage: questionText,
       activeStep: step.id,
       triggeredTemplateId: `step-${step.id}-prompt-${promptIndex + 1}`,
       reportedObservation: ""
     });
     state.messages.pop();
-    addMessage("agent", reply);
+    addAgentResponse(payload);
   } catch (error) {
     state.messages.pop();
     addMessage("system", `发送失败：${error instanceof Error ? error.message : "未知错误"}。请稍后重试。`);
@@ -268,13 +311,13 @@ function setupChat() {
     addMessage("system", "小科正在思考...");
 
     try {
-      const reply = await sendToAgent({
+      const payload = await sendToAgent({
         studentMessage: text,
         activeStep: state.activeStep,
         reportedObservation: text
       });
       state.messages.pop();
-      addMessage("agent", reply);
+      addAgentResponse(payload);
     } catch (error) {
       state.messages.pop();
       addMessage("system", `发送失败：${error instanceof Error ? error.message : "未知错误"}。你的输入已保留在上方记录中。`);
@@ -294,6 +337,13 @@ function setupChat() {
     state.messages = [];
     addWelcomeMessage();
   });
+}
+
+function addAgentResponse(payload) {
+  if (payload.notice?.message) {
+    addMessage("system", payload.notice.message);
+  }
+  addMessage("agent", payload.content || "小科暂时没有生成有效回复，请再描述一次你们的观察。");
 }
 
 function addWelcomeMessage() {

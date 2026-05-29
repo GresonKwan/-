@@ -458,6 +458,18 @@ textarea {
   font-size: 13px;
 }
 
+.message strong {
+  font-weight: 800;
+}
+
+.message code {
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.08);
+  padding: 1px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.94em;
+}
+
 .composer {
   display: grid;
   grid-template-columns: 1fr auto;
