@@ -109,7 +109,7 @@ function normalizeMarkdownLine(line) {
 }
 
 function appendInlineMarkdown(container, text) {
-  const pattern = /`([^`]+)`|\*\*([^*]+)\*\*|_{2,}([^_]+?)_{3,}|_{3,}|__([^_]+?)__/g;
+  const pattern = /`([^`]+)`|\*\*([^*]+)\*\*|__([^_\s，。！？；：,.!?;:、（）()“”"']{1,16})___|_{3,}|__([^_]+?)__/g;
   let lastIndex = 0;
   for (const match of text.matchAll(pattern)) {
     if (match.index > lastIndex) {
