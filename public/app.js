@@ -109,17 +109,25 @@ function normalizeMarkdownLine(line) {
 }
 
 function appendInlineMarkdown(container, text) {
-  const pattern = /(\*\*|__)(.+?)\1|`([^`]+)`/g;
+  const pattern = /`([^`]+)`|\*\*([^*]+)\*\*|_{2,}([^_]+?)_{3,}|_{3,}|__([^_]+?)__/g;
   let lastIndex = 0;
   for (const match of text.matchAll(pattern)) {
     if (match.index > lastIndex) {
       container.appendChild(document.createTextNode(stripLooseMarkdown(text.slice(lastIndex, match.index))));
     }
-    const marker = match[1];
-    const value = match[2] || match[3] || "";
-    const element = document.createElement(marker ? "strong" : "code");
-    element.textContent = stripLooseMarkdown(value);
-    container.appendChild(element);
+    if (match[1]) {
+      const element = document.createElement("code");
+      element.textContent = stripLooseMarkdown(match[1]);
+      container.appendChild(element);
+    } else if (match[2] || match[4]) {
+      const element = document.createElement("strong");
+      element.textContent = stripLooseMarkdown(match[2] || match[4]);
+      container.appendChild(element);
+    } else if (match[3]) {
+      container.appendChild(createFillBlank(match[0], match[3]));
+    } else {
+      container.appendChild(createFillBlank(match[0]));
+    }
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < text.length) {
@@ -127,13 +135,21 @@ function appendInlineMarkdown(container, text) {
   }
 }
 
+function createFillBlank(rawToken, label = "") {
+  const blank = document.createElement("span");
+  blank.className = `fill-blank${label ? " is-labeled" : " is-empty"}`;
+  blank.setAttribute("aria-label", label ? `填空：${label}` : "填空");
+  const width = label ? Math.max(72, label.length * 18) : Math.max(44, Math.min(96, rawToken.length * 8));
+  blank.style.setProperty("--blank-width", `${width}px`);
+  blank.textContent = label;
+  return blank;
+}
+
 function stripLooseMarkdown(text) {
   return text
     .replace(/\*\*\*/g, "")
     .replace(/\*\*/g, "")
-    .replace(/__/g, "")
-    .replace(/(^|[^*])\*(?!\*)/g, "$1")
-    .replace(/_/g, "");
+    .replace(/(^|[^*])\*(?!\*)/g, "$1");
 }
 
 function renderSteps() {
